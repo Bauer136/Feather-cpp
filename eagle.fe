@@ -9,6 +9,7 @@ if (0) {
     x = 3;
 }
 
+print(x);
 exit(x);
 
 /*

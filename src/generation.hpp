@@ -173,6 +173,16 @@ public:
                 gen.m_output << "    ;; /exit\n";
             }
 
+            void operator()(const NodeStmtPrint* stmt_print) const
+            {
+                gen.m_output << "    ;; print\n";
+                gen.gen_expr(stmt_print->expr);
+                gen.pop("rdi");
+                gen.m_output << "    call _print_int\n";
+                gen.m_output << "    ;; /print\n";
+                gen.m_uses_print = true;
+            }
+
             void operator()(const NodeStmtLet* stmt_let) const
             {
                 gen.m_output << "    ;; let\n";
@@ -247,6 +257,39 @@ public:
         m_output << "    mov rax, 60\n";
         m_output << "    mov rdi, 0\n";
         m_output << "    syscall\n";
+        if (m_uses_print) {
+            m_output << "_print_int:\n";
+            m_output << "    sub rsp, 32\n";
+            m_output << "    lea rcx, [rsp + 31]\n";
+            m_output << "    mov BYTE [rcx], 10\n";
+            m_output << "    dec rcx\n";
+            m_output << "    mov rax, rdi\n";
+            m_output << "    mov rbx, 10\n";
+            m_output << "    test rax, rax\n";
+            m_output << "    jnz .loop\n";
+            m_output << "    mov BYTE [rcx], '0'\n";
+            m_output << "    jmp .write\n";
+            m_output << ".loop:\n";
+            m_output << "    test rax, rax\n";
+            m_output << "    jz .after\n";
+            m_output << "    xor rdx, rdx\n";
+            m_output << "    div rbx\n";
+            m_output << "    add dl, '0'\n";
+            m_output << "    mov [rcx], dl\n";
+            m_output << "    dec rcx\n";
+            m_output << "    jmp .loop\n";
+            m_output << ".after:\n";
+            m_output << "    inc rcx\n";
+            m_output << ".write:\n";
+            m_output << "    lea rdx, [rsp + 32]\n";
+            m_output << "    sub rdx, rcx\n";
+            m_output << "    mov rsi, rcx\n";
+            m_output << "    mov rdi, 1\n";
+            m_output << "    mov rax, 1\n";
+            m_output << "    syscall\n";
+            m_output << "    add rsp, 32\n";
+            m_output << "    ret\n";
+        }
         return m_output.str();
     }
 
@@ -299,4 +342,5 @@ private:
     std::vector<Var> m_vars {};
     std::vector<size_t> m_scopes {};
     int m_label_count = 0;
+    bool m_uses_print = false;
 };
